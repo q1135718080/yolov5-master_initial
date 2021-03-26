@@ -231,7 +231,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
 
 
 # nms
-'''
+
 def box_iou(box1, box2):
     # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
     """
@@ -255,9 +255,9 @@ def box_iou(box1, box2):
     # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
     inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
     return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
+
+
 '''
-
-
 # DIoU_nms
 def box_iou(box1, box2):
     # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
@@ -298,6 +298,7 @@ def box_iou(box1, box2):
     dious = iou_nm - (rho2s / c2)
 
     return dious
+'''
 
 
 def wh_iou(wh1, wh2):
