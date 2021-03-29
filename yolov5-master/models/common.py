@@ -12,6 +12,7 @@ from utils.general import non_max_suppression, make_divisible, scale_coords, xyx
 from utils.plots import color_list
 
 
+# 自动填充
 def autopad(k, p=None):  # kernel, padding
     # Pad to 'same'
     if p is None:
@@ -19,23 +20,32 @@ def autopad(k, p=None):  # kernel, padding
     return p
 
 
+# 深度可分离卷积
 def DWConv(c1, c2, k=1, s=1, act=True):
     # Depthwise convolution
     return Conv(c1, c2, k, s, g=math.gcd(c1, c2), act=act)
 
 
+# CBL
 class Conv(nn.Module):
     # Standard convolution
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):  # ch_in, ch_out, kernel, stride, padding, groups
+        # g = 2 分2组卷积
         super(Conv, self).__init__()
+        # 卷积操作
         self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p), groups=g, bias=False)
+        # BN层
         self.bn = nn.BatchNorm2d(c2)
-        self.act = nn.Hardswish() if act else nn.Identity()
+        # 激活函数
+        # self.act = nn.Hardswish() if act else nn.Identity()
         # self.act = nn.LeakyReLU() if act else nn.Identity()
+        self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
 
+    # 前向计算
     def forward(self, x):
         return self.act(self.bn(self.conv(x)))
 
+    # 前向融合计算
     def fuseforward(self, x):
         return self.act(self.conv(x))
 
@@ -44,9 +54,11 @@ class Bottleneck(nn.Module):
     # Standard bottleneck
     def __init__(self, c1, c2, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, shortcut, groups, expansion
         super(Bottleneck, self).__init__()
+
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv(c_, c2, 3, 1, g=g)
+        # c1==c2 and shortcut的布尔值赋值给self.add
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
@@ -63,6 +75,7 @@ class BottleneckCSP(nn.Module):
         self.cv3 = nn.Conv2d(c_, c_, 1, 1, bias=False)
         self.cv4 = Conv(2 * c_, c2, 1, 1)
         self.bn = nn.BatchNorm2d(2 * c_)  # applied to cat(cv2, cv3)
+        #  产生的计算结果不会有影响。利用in-place计算可以节省内（显）存，同时还可以省去反复申请和释放内存的时间。但是会对原变量覆盖，只要不带来错误就用。
         self.act = nn.LeakyReLU(0.1, inplace=True)
         self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
 
